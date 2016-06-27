@@ -1,0 +1,113 @@
+---
+title       : Practical learning machine
+subtitle    : Assignment Writeup - Prediction of how was Exercise Performed -
+author      : Carlos Pinilla
+job         : 
+logo        : 
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow   # 
+url:
+  lib: ../../librariesNew
+  assets: ../../assets
+widgets     : [mathjax]            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+---
+
+
+```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F}
+library(knitr); library(caret)
+# make this an external chunk that can be included in any file
+options(width = 100)
+opts_chunk$set(message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 100, tidy = F, cache.path = '.cache/', fig.path = 'fig/')
+
+options(xtable.type = 'html')
+knit_hooks$set(inline = function(x) {
+  if(is.numeric(x)) {
+    round(x, getOption('digits'))
+  } else {
+    paste(as.character(x), collapse = ', ')
+  }
+})
+knit_hooks$set(plot = knitr:::hook_plot_html)
+```
+
+
+## Introduction
+
+As nowdays we count with a large quantity of wereables, it is easy to collect a big amount of data relative to Human Activity Recognition. We count with a dataset with information about accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways and the goal is to use data to predict the exercises did by the volunters based in the data registered.
+
+## Data
+
+The training data for this project was taken from: 
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data was taken from: 
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
+
+---
+
+## Getting the data
+
+```{r loadData,cache=TRUE}
+library(ggplot2); library(caret);
+# Download data.
+dir_data_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+file_data_training <- "pml-training.csv"
+download.file(url=dir_data_training, destfile=file_data_training)
+dir_data_testing <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+file_data_testing <- "pml-testing.csv"
+download.file(url=dir_data_testing, destfile=file_data_testing)
+
+# Import the data treating empty values as NA.
+training <- read.csv(file_data_training, na.strings=c("NA",""), header=TRUE)
+colnames_train <- colnames(training)
+testing <- read.csv(file_data_testing, na.strings=c("NA",""), header=TRUE)
+colnames_test <- colnames(testing)
+summary(training)
+summary(testing)
+```
+
+
+
+---
+
+## Get training/test sets
+
+```{r trainingTest,dependson="loadData",cache=TRUE}
+inTrain <- createDataPartition(training$classe, p=0.8, list=FALSE)
+training_0 <- training[inTrain, ]
+testing_0 <- training[-inTrain, ]
+dim(Training_0); dim(Testing_0)
+```
+
+
+
+---
+
+---
+
+## Plot age versus wage
+
+
+```{r ,dependson="trainingTest",fig.height=4,fig.width=6}
+set.seed(408)
+control<-trainControl(method="cv", number=5, allowParallel=T, verbose=T)
+modelrf<-train(classe~.,data=training_0, method="rf", trControl=control, verbose=F)
+modelrf$finalModel
+
+predict_rf<-predict(modelrf, newdata=testing_0)
+#we can see some statistics of the fit here:
+confusionMatrix(predict_rf, testing_1$classe)
+
+answers <- predict(rffit,testing);
+answers
+#testing$predRight <- pred==Subtesting$classe
+#table(pred,testing$classe)
+```
+
+
