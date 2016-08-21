@@ -56,12 +56,12 @@ The data for this project come from this source: http://groupware.les.inf.puc-ri
 ```{r loadData,cache=TRUE}
 library(ggplot2); library(caret);
 # Download data.
-dir_data_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+#dir_data_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 file_data_training <- "pml-training.csv"
-download.file(url=dir_data_training, destfile=file_data_training)
-dir_data_testing <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+#download.file(url=dir_data_training, destfile=file_data_training)
+#dir_data_testing <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 file_data_testing <- "pml-testing.csv"
-download.file(url=dir_data_testing, destfile=file_data_testing)
+#download.file(url=dir_data_testing, destfile=file_data_testing)
 
 # Import the data treating empty values as NA.
 training <- read.csv(file_data_training, na.strings=c("NA",""), header=TRUE)
@@ -82,7 +82,7 @@ summary(testing)
 inTrain <- createDataPartition(training$classe, p=0.8, list=FALSE)
 training_0 <- training[inTrain, ]
 testing_0 <- training[-inTrain, ]
-dim(Training_0); dim(Testing_0)
+dim(training_0); dim(testing_0)
 ```
 
 
@@ -95,10 +95,12 @@ dim(Training_0); dim(Testing_0)
 
 
 ```{r ,dependson="trainingTest",fig.height=4,fig.width=6}
+library(caret)
 set.seed(408)
 control<-trainControl(method="cv", number=5, allowParallel=T, verbose=T)
-modelrf<-train(classe~.,data=training_0, method="rf", trControl=control, verbose=F)
+modelrf<-train(classe ~ ., data=training_0, method="rf", trControl=control, verbose=F)
 modelrf$finalModel
+
 
 predict_rf<-predict(modelrf, newdata=testing_0)
 #we can see some statistics of the fit here:
