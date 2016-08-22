@@ -1,0 +1,166 @@
+---
+title       : Practical learning machine
+subtitle    : Assignment Writeup - Prediction of how was Exercise Performed -
+author      : Carlos Pinilla
+job         :
+logo        :
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow   #
+url:
+  lib: ../../librariesNew
+  assets: ../../assets
+widgets     : [mathjax]            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+---
+ 
+```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F}
+library(knitr); library(caret); library(randomForest)
+# make this an external chunk that can be included in any file
+options(width = 100)
+knitr::opts_chunk$set(message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 100, tidy = F, cache.path = '.cache/', fig.path = 'fig/')
+options(xtable.type = 'html')
+knit_hooks$set(inline = function(x) {
+  if(is.numeric(x)) {
+    round(x, getOption('digits'))
+  } else {
+    paste(as.character(x), collapse = ', ')
+  }
+})
+knitr::knit_hooks$set(plot = knitr::hook_plot_html)
+```
+ 
+## Introduction
+As nowdays we count with a large quantity of wereables, it is easy to collect a big amount of data relative to Human Activity Recognition. We count with a dataset with information about accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways (5 classes)and the goal is to use data to predict the exercises (the classe)did by the volunters based in the data registered.
+## Data
+The training data for this project was taken from:
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+The test data was taken from:
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+---
+## Getting the data
+```{r loadData,cache=TRUE}
+suppressMessages(library(ggplot2)); suppressMessages(library(caret)); suppressMessages(library(RCurl))
+# Download data.
+dir_data_training <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+file_data_training <- "pml-training.csv"
+download.file(url=dir_data_training, destfile=file_data_training)
+dir_data_testing <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+file_data_testing <- "pml-testing.csv"
+download.file(url=dir_data_testing, destfile=file_data_testing)
+# Import the data treating empty values as NA.
+set.seed(408)
+training <- read.csv(file_data_training, na.strings=c("NA","","#DIV/0!"), header=TRUE)
+colnames_train <- colnames(training)
+testing <- read.csv(file_data_testing, na.strings=c("NA","","#DIV/0!"), header=TRUE)
+colnames_test <- colnames(testing)
+dim(training)
+dim(testing)
+```
+ 
+ 
+---
+## Get training/test sets
+It has been eliminate those columns with no information or columns without at least 68% of valid information and all the data is conformed by "NA"
+```{r trainingTest,dependson="loadData",cache=TRUE}
+ 
+na_test = sapply(training, function(x) {sum(is.na(x))})
+table(na_test)
+ No_bad <- dim(training)[1]*0.68
+bad_columns = names(na_test[na_test > No_bad-1])
+training = training[, !names(training) %in% bad_columns]
+dim(training)
+testing = testing[, !names(testing) %in% bad_columns]
+dim(testing)
+```
+
+Next, just visualizing the names of the columns it is easy to figure out which columns are predictors and which ones are just informative, thas why it were removed the firsts seven columns.
+
+```{r}
+names(training)
+training_0 <- training[,-(1:7)]
+
+``` 
+
+
+## splitting in Training and testing
+ 
+
+ 
+```{r Preprocessing,dependson="trainingTest",cache=TRUE}
+inTrain = createDataPartition(training_0$classe, p = 3/4)[[1]]
+training_1 = training_0[ inTrain,]
+testing_1 = training_0[-inTrain,]
+
+
+ 
+```
+---
+ 
+## training the machine
+ 
+I decided to use the decitision tree method because analizing the type of work to identify, I infer that some classes of exercise will be well diferents between each sensor and variable, that why I expect clustets well defined. 
+ 
+```{r fig.height=4,fig.width=4,cache=TRUE}
+table(training_1$classe)
+modFit <- train(classe~ .,data=training_1,preProcess=c("center","scale"),method="rpart")
+ print(modFit$finalModel)
+fancyRpartPlot(modFit$finalModel)
+prediction <- predict(modFit,newdata=testing_1)
+confusionMatrix(prediction, testing_1$classe)
+print(modFit, digits=3)
+```
+After the first test I plot the principal variables to see some correlation between the variables
+```{r}
+featurePlot(x=training_1[,c("roll_belt","pitch_forearm","magnet_dumbbell_y","roll_forearm")], y = training_1$classe,plot="pairs")
+
+predict_rf<-predict(modFit, newdata=testing_1)
+#we can see some statistics of the fit here:
+confusionMatrix(predict_rf, testing_1$classe)
+
+
+fitControl2<-trainControl(method="cv", number=3, allowParallel=T, verbose=T)
+
+
+gmbfit<-train(classe~.,data=training_1, method="gbm",preProcess=c("center","scale"), trControl=fitControl2, verbose=F)
+
+gmbfit$finalModel
+predtrain<-predict(gmbfit, newdata=training_1)
+confusionMatrix(predtrain, training_1$classe)
+predgmb<-predict(gmbfit, newdata=testing_1)
+confusionMatrix(predgmb, testing_1$classe)
+
+```
+ 
+ 
+ 
+---
+ 
+## Predicting new values
+ 
+```{r predForest, dependson="centers",fig.height=4,fig.width=4,cache=TRUE}
+answers <- predict(gmbfit,testing);
+answers
+#testing$predRight <- pred==Subtesting$classe
+#table(pred,testing$classe)
+```
+ 
+---
+ 
+## Predicting new values
+ 
+```{r, dependson="predForest",fig.height=4,fig.width=4}
+##qplot(Petal.Width,Petal.Length,colour=predRight,data=testing,main="newdata Predictions")
+```
+```{r, dependson="predForest",fig.height=4,fig.width=4}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(answers)
+```
+---
